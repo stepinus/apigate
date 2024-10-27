@@ -46,7 +46,7 @@ describe('GET /events', () => {
 });
 import request from 'supertest';
 import { Server } from 'http';
-import app from './index'; // Import your app
+import app from './index'; // Импортируйте ваше приложение
 
 let server: Server;
 

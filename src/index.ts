@@ -30,4 +30,4 @@ if (require.main === module) {
   });
 }
 
-export default app; // Export the app
+export default app; // Экспортируйте приложение
