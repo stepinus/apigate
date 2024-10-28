@@ -60,8 +60,10 @@ prefixes.forEach(({ name, module, allRoutes }) => {
     }
 });
 
+app.use(express.static('src/static'));
+
 app.get('/', (req, res) => {
-    res.json({ message: 'Welcome to the API!' });
+    res.sendFile('index.html', { root: 'src/static' });
 });
 
 server.listen(3000, () => {
