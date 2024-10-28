@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import http from 'http';
+import cors from 'cors';
 import * as copilotApi from './modules/copilot.js';
 import * as gigaChatApi from './modules/gigaChat.js';
 import * as openrouterApi from './modules/openrouter.js';
@@ -12,6 +13,9 @@ const server = http.createServer(app);
 // Middleware to parse JSON and raw body
 app.use(express.json());
 app.use(express.text({ type: '*/*' }));
+
+// Enable CORS
+app.use(cors());
 
 class SseHelper {
     static sse(res, data) {
