@@ -13,7 +13,6 @@ const server = http.createServer(app);
 // Middleware to parse JSON and raw body
 app.use(express.json());
 app.use(express.text({ type: '*/*' }));
-
 // Enable CORS
 app.use(cors());
 
@@ -64,7 +63,8 @@ app.use('/', express.static(path.join(__dirname, 'src', 'static'), {
     setHeaders: (res, path) => {
       if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-      } else if (path.endsWith('.ts')) {
+        res.setHeader('Access-Control-Allow-Origin', "*");
+    } else if (path.endsWith('.ts')) {
         res.setHeader('Content-Type', 'video/MP2T');
       }
     }
