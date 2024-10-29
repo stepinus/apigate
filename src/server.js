@@ -62,7 +62,7 @@ prefixes.forEach(({ name, module, allRoutes }) => {
 
 app.use('/', express.static(path.join(__dirname, 'src', 'static'), {
     setHeaders: (res, path) => {
-      if (path.endsWith('.m3u8')) {
+      if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
       } else if (path.endsWith('.ts')) {
         res.setHeader('Content-Type', 'video/MP2T');
