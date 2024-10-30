@@ -15,7 +15,6 @@ app.use(express.json());
 app.use(express.text({ type: '*/*' }));
 // Enable CORS
 var corsOptions = {
-    origin: '*',
     credentials: true };
 app.use(cors(corsOptions));
 
@@ -66,9 +65,11 @@ app.use('/', express.static('src/static'), {
     setHeaders: (res, path) => {
       if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        app.use(cors({ origin: ['hlsjs.video-dev.org','localhost:5173','tass.stepinus.store'], credentials: true }));
 
     } else if (path.endsWith('.ts')) {
         res.setHeader('Content-Type', 'video/MP2T');
+        app.use(cors({ origin: ['hlsjs.video-dev.org','localhost:5173','tass.stepinus.store'], credentials: true }));
       }
     }
   });
