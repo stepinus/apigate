@@ -63,7 +63,6 @@ app.use('/', express.static('src/static'), {
     setHeaders: (res, path) => {
       if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        res.setheader('Access-Control-Allow-Origin', "*");
     } else if (path.endsWith('.ts')) {
         res.setHeader('Content-Type', 'video/MP2T');
       }
