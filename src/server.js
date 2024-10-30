@@ -59,7 +59,7 @@ prefixes.forEach(({ name, module, allRoutes }) => {
     }
 });
 
-app.use('/', express.static(path.join(__dirname, 'src', 'static'), {
+app.use('/', express.static('src/static'), {
     setHeaders: (res, path) => {
       if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
