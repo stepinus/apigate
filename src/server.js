@@ -15,18 +15,6 @@ app.use(express.json());
 app.use(express.text({ type: '*/*' }));
 // Enable CORS
 app.use(cors());
-app.use('/', express.static('src/static'), {
-    setHeaders: (res, path) => {
-      if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
-        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-        res.setHeader('Cache-Control', 'no-cache');
-    } else if (path.endsWith('.ts')) {
-        res.setHeader('Content-Type', 'video/MP2T');
-        res.setHeader('Access-Control-Allow-Origin', '*');
-      }
-    }
-  });
 
 class SseHelper {
     static sse(res, data) {
@@ -71,7 +59,16 @@ prefixes.forEach(({ name, module, allRoutes }) => {
     }
 });
 
-
+app.use('/', express.static(path.join(__dirname, 'src', 'static'), {
+    setHeaders: (res, path) => {
+      if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
+        res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
+        res.setheader('Access-Control-Allow-Origin', "*");
+    } else if (path.endsWith('.ts')) {
+        res.setHeader('Content-Type', 'video/MP2T');
+      }
+    }
+  }));
 
 server.listen(3000, () => {
     console.log('Server running on port 3000');
