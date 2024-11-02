@@ -3,7 +3,8 @@ import path from 'path';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
 import NodeCache from 'node-cache';
-import { AIStream } from "ai"
+import { createOpenAI } from '@ai-sdk/openai';
+import { streamText } from 'ai';
 
 
 // Константы
@@ -13,8 +14,7 @@ const API_VERSION = "2023-07-07";
 const INTEGRATION_ID = "vscode-chat";
 const ORGANIZATION = "github-copilot";
 const HOST = "api.githubcopilot.com";
-import { createOpenAI } from '@ai-sdk/openai';
-import { streamText, StreamData } from 'ai';
+
 
 
 
@@ -265,14 +265,6 @@ const chatCompletions = async (req, res) => {
 
 
 };
-function makeChunk(delta,type){
-    return {
-        delta: {
-            content: delta,
-            type: type
-        }
-    };
-}
 const embeddings = async (req, res) => {
     try {
         res.status(501).json({ error: "Not implemented" });

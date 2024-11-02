@@ -9,7 +9,6 @@ import * as hlsApi from './modules/hls.js';
 
 
 const app = express();
-const port = 3000;
 const server = http.createServer(app);
 
 // Middleware to parse JSON and raw body
