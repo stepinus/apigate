@@ -22,10 +22,7 @@ const chatCompletions = async (req, res) => {
         const stream = await openrouter.chat.completions.create({...req.body});
         for await (const chunk of stream) {
             res.sse(chunk);
-            // logData(chunk.choices[0].delta);
-            console.log('openchunk',chunk);
         }
-        // res.sse('[DONE]');
         res.write('data: [DONE]\n\n');
         res.end();
     } catch (error) {

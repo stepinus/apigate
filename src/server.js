@@ -5,6 +5,7 @@ import cors from 'cors';
 import * as copilotApi from './modules/copilot.js';
 import * as gigaChatApi from './modules/gigaChat.js';
 import * as openrouterApi from './modules/openrouter.js';
+import * as hlsApi from './modules/hls.js';
 
 
 const app = express();
@@ -59,22 +60,15 @@ prefixes.forEach(({ name, module, allRoutes }) => {
         app.get(`${basePath}/models`, module.models);
     }
 });
+
+// HLS streaming route
+app.get('/hls/stream/:file', hlsApi.streamHls);
+
 app.use(express.static('src/static'));
 app.get('/', (req, res) => {
     res.sendFile('index.html', { root: 'src/static' });
 });
-// app.use('/', express.static('src/static'), {
-//     setHeaders: (res, path) => {
-//       if (path.endsWith('.m3u8') || path.endsWith('.m3u')) {
-//         res.setHeader('Content-Type', 'application/vnd.apple.mpegurl');
-//         app.use(cors({ origin: ['hlsjs.video-dev.org','localhost:5173','tass.stepinus.store'], credentials: true }));
 
-//     } else if (path.endsWith('.ts')) {
-//         res.setHeader('Content-Type', 'video/MP2T');
-//         app.use(cors({ origin: ['hlsjs.video-dev.org','localhost:5173','tass.stepinus.store'], credentials: true }));
-//       }
-//     }
-//   });
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.url}`);
     next();

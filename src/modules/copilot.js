@@ -15,7 +15,6 @@ const ORGANIZATION = "github-copilot";
 const HOST = "api.githubcopilot.com";
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText, StreamData } from 'ai';
-import logData from '../log.js';
 
 
 
@@ -50,7 +49,7 @@ const makeHeaders = async (token) => {
     return {
         "Host": HOST,
         "Connection": "keep-alive",
-        "Authorization": `Bearer ${token}`,
+        // "Authorization": `Bearer ${token}`,
         "Copilot-Integration-Id": INTEGRATION_ID,
         "Editor-Plugin-Version": `copilot-chat/${CHAT_VERSION}`,
         "Editor-Version": `vscode/${VSCODE_VERSION}`,
@@ -180,20 +179,7 @@ const handleCorsProxy = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
-function transformChunkToOpenAIFormat(chunk) {
-    let text = '';
-    const choices = [];
 
-    if (chunk.type === 'text-delta') {
-        text = chunk.textDelta;
-        choices.push({ text, index: 0, finish_reason: 'stop' });
-    } else if (chunk.type === 'tool-call' || chunk.type === 'tool-call-streaming-start' || chunk.type === 'tool-call-delta') {
-        console.log(`Received tool call or tool call delta: ${chunk.type}`);
-        // Handle tool calls or tool call deltas as needed
-    }
-
-    return { choices };
-}
 const chatCompletions = async (req, res) => {
     var fheaders =''
     var ftoken=''
@@ -233,19 +219,40 @@ const chatCompletions = async (req, res) => {
             const {textStream} = await streamText({
             model: openai.chat(req.body.model),
             prompt: JSON.stringify(req.body.messages),
-            apiKey:ftoken,
+            // apiKey:ftoken,
             maxTokens: 4000,
             headers: fheaders,
             useStreaming: true,
             experimental_toolCallStreaming: true,
             compatibility: 'strict', // strict mode, enable when using the OpenAI API     
           });
+          res.setHeader('Content-Type', 'text/event-stream');
+          res.setHeader('Cache-Control', 'no-cache');
+          res.setHeader('Connection', 'keep-alive');
+  
           for await (const chunk of textStream) {
-            const transformedChunk = transformChunkToOpenAIFormat(chunk);
-            res.write(transformedChunk);
+            // Преобразуем в формат OpenAI
+            const openAIFormat = {
+                id: 'chatcmpl-' + Math.random().toString(36).substr(2, 9),
+                object: 'chat.completion.chunk',
+                created: Date.now(),
+                model: req.body.model,
+                choices: [{
+                    index: 0,
+                    delta: {
+                        content: chunk
+                    },
+                    finish_reason: null
+                }]
+            };
+
+            // Отправляем через SSE
+            res.write(`data: ${JSON.stringify(openAIFormat)}\n\n`);
         }
-            res.write('data: [DONE]\n\n');
-            res.end();
+
+        // Завершаем стрим
+        res.write('data: [DONE]\n\n');
+        res.end();
 
      
 
