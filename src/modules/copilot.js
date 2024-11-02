@@ -2,7 +2,9 @@ import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
 import fetch from 'node-fetch';
-import { Transform } from 'stream';
+import NodeCache from 'node-cache';
+import { AIStream } from "ai"
+
 
 // Константы
 const CHAT_VERSION = "0.23.2024102903";
@@ -11,10 +13,18 @@ const API_VERSION = "2023-07-07";
 const INTEGRATION_ID = "vscode-chat";
 const ORGANIZATION = "github-copilot";
 const HOST = "api.githubcopilot.com";
+import { createOpenAI } from '@ai-sdk/openai';
+import { streamText, StreamData } from 'ai';
+import logData from '../log.js';
+
+
 
 // Загрузка HTML для /token
 const __dirname = path.dirname(new URL(import.meta.url).pathname);
 const tokenHtml = fs.readFileSync(path.join(__dirname, 'tointegrate/get_copilot_token.html'), 'utf-8');
+
+// Инициализация кэша
+const tokenCache = new NodeCache({ stdTTL: 3600 }); // Время жизни токена в секундах
 
 // Обработка OPTIONS запросов
 const handleOPTIONS = (res) => {
@@ -27,10 +37,16 @@ const handleOPTIONS = (res) => {
 };
 
 // Генерация заголовков
+const createSha256Hash = (input) => {
+    if (typeof input !== 'string') {
+        console.error('Invalid input type for createSha256Hash:', typeof input);
+        throw new TypeError('The "data" argument must be of type string');
+    }
+    return crypto.createHash('sha256').update(input).digest('hex');
+};
+
 const makeHeaders = async (token) => {
-    const createSha256Hash = (input) => {
-        return crypto.createHash('sha256').update(input).digest('hex');
-    };
+    const machineId = createSha256Hash(token);
     return {
         "Host": HOST,
         "Connection": "keep-alive",
@@ -41,7 +57,7 @@ const makeHeaders = async (token) => {
         "Openai-Intent": "conversation-panel",
         "Openai-Organization": ORGANIZATION,
         "User-Agent": `GitHubCopilotChat/${CHAT_VERSION}`,
-        "Vscode-Machineid": createSha256Hash(token),
+        "Vscode-Machineid": machineId,
         "Vscode-Sessionid": `${crypto.randomUUID()}${Date.now()}`,
         "X-Github-Api-Version": API_VERSION,
         "X-Request-Id": crypto.randomUUID(),
@@ -80,11 +96,18 @@ const getToken = async (authKey) => {
     if (!response.ok) {
         throw new Error(`Token request failed: ${response.status} ${response.statusText}`);
     }
-    const data = await response.json();
-    if (!data.token) {
+    const text = await response.text();
+    let token;
+    try {
+        token = JSON.parse(text)["token"];
+    } catch (e) {
+        console.error(e.message, "\n", text);
+        throw new Error(`Token parse error: ${e.message}`);
+    }
+    if (!token) {
         throw new Error("Token not found in response");
     }
-    return data.token;
+    return { token, text };
 };
 
 // Очистка ответов
@@ -157,57 +180,92 @@ const handleCorsProxy = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+function transformChunkToOpenAIFormat(chunk) {
+    let text = '';
+    const choices = [];
 
+    if (chunk.type === 'text-delta') {
+        text = chunk.textDelta;
+        choices.push({ text, index: 0, finish_reason: 'stop' });
+    } else if (chunk.type === 'tool-call' || chunk.type === 'tool-call-streaming-start' || chunk.type === 'tool-call-delta') {
+        console.log(`Received tool call or tool call delta: ${chunk.type}`);
+        // Handle tool calls or tool call deltas as needed
+    }
+
+    return { choices };
+}
 const chatCompletions = async (req, res) => {
+    var fheaders =''
+    var ftoken=''
     try {
         if (req.method === "OPTIONS") {
             handleOPTIONS(res);
             return;
         }
-
         let authKey = process.env.COPILOT_API_KEY;
         if (!authKey) {
             throw new Error('COPILOT_API_KEY not found');
         }
-
-        let token = await getToken(authKey);
-        const headers = await makeHeaders(token);
-
-        const response = await fetch('https://api.githubcopilot.com/chat/completions', {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(req.body)
-        });
-
-        if (!response.ok) {
-            throw new Error(`Copilot API error: ${response.status}`);
+        // Проверяем кэш на наличие токена
+        ftoken = tokenCache.get(authKey);
+        if (!ftoken) {
+            const { token: newToken, text } = await getToken(authKey);
+            ftoken = newToken;
+            // Извлекаем время истечения токена
+            const expirationMatch = text.match(/;exp=(\d+);/);
+            if (expirationMatch) {
+                const expiration = parseInt(expirationMatch[1], 10);
+                const ttl = expiration - Math.floor(Date.now() / 1000);
+                tokenCache.set(authKey, ftoken, ttl);
+            } else {
+                tokenCache.set(authKey, ftoken, 3600); // 1 час по умолчанию
+            }
         }
+        fheaders = await makeHeaders(ftoken);
+        const openai = createOpenAI({
+            apiKey: ftoken,
+            baseURL:'https://api.githubcopilot.com',
+          
+          });   
 
-        if (response.headers.get("Transfer-Encoding") === "chunked") {
-            res.setHeader("Content-Type", "text/event-stream");
-            response.body
-                .pipe(new Transform({
-                    transform(chunk, encoding, callback) {
-                        const cleaned = cleanLine(chunk.toString());
-                        if (cleaned) {
-                            callback(null, cleaned + "\n\n");
-                        } else {
-                            callback();
-                        }
-                    }
-                }))
-                .pipe(res);
-        } else {
-            const text = await response.text();
-            res.end(clean(text));
+          
+  
+            const {textStream} = await streamText({
+            model: openai.chat(req.body.model),
+            prompt: JSON.stringify(req.body.messages),
+            apiKey:ftoken,
+            maxTokens: 4000,
+            headers: fheaders,
+            useStreaming: true,
+            experimental_toolCallStreaming: true,
+            compatibility: 'strict', // strict mode, enable when using the OpenAI API     
+          });
+          for await (const chunk of textStream) {
+            const transformedChunk = transformChunkToOpenAIFormat(chunk);
+            res.write(transformedChunk);
         }
+            res.write('data: [DONE]\n\n');
+            res.end();
+
+     
 
     } catch (error) {
+        console.log('ero in token requestr', error)
         console.error(`Error in Copilot chat completions:`, error);
-        res.status(500).json({ error: error.message });
+        res.write(transformChunkToOpenAIFormat({textDelta:'An error occurred during the Copilot API call'+JSON.stringify(error)}));
+        res.status(500).json({ error: 'An error occurred during the Copilot API call' });
     }
-};
 
+
+};
+function makeChunk(delta,type){
+    return {
+        delta: {
+            content: delta,
+            type: type
+        }
+    };
+}
 const embeddings = async (req, res) => {
     try {
         res.status(501).json({ error: "Not implemented" });

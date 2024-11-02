@@ -3,8 +3,5 @@
       "logs/*",
       "*.log"
     ],
-    "watch": [
-      "src/"
-    ],
-    "ext": "js,mjs,json"
+    "ext": "json"
   }

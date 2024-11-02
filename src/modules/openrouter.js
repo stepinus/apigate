@@ -1,4 +1,5 @@
 import OpenAI from 'openai';
+import logData from '../log.js';
 if (!process.env.OPENROUTER_API_KEY) {
     throw new Error('OPENROUTER_API_KEY environment variable is not set');
 }
@@ -12,9 +13,17 @@ const openrouter = new OpenAI({
 
 const chatCompletions = async (req, res) => {
     try {
+        // Check for a specific trigger in the request body
+        if (req.body && req.body.trigger === 'test') {
+            res.sse({ message: 'one world' });
+            return;
+        }
+
         const stream = await openrouter.chat.completions.create({...req.body});
         for await (const chunk of stream) {
             res.sse(chunk);
+            // logData(chunk.choices[0].delta);
+            console.log('openchunk',chunk);
         }
         // res.sse('[DONE]');
         res.write('data: [DONE]\n\n');
@@ -23,7 +32,9 @@ const chatCompletions = async (req, res) => {
         console.error('Error in OpenRouter chat completions:', error);
         res.status(500).json({ error: 'An error occurred during the OpenRouter API call' });
     }
-};const embeddings = async (req, res) => {
+};
+
+const embeddings = async (req, res) => {
     try {
         const response = await openrouter.embeddings.create({
             model: "text-embedding-ada-002",
