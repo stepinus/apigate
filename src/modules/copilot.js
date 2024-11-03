@@ -1,7 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import crypto from 'crypto';
-import fetch from 'node-fetch';
 import NodeCache from 'node-cache';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from 'ai';
