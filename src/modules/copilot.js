@@ -5,7 +5,6 @@ import NodeCache from 'node-cache';
 import { createOpenAI } from '@ai-sdk/openai';
 import { streamText } from 'ai';
 
-
 // Константы
 const CHAT_VERSION = "0.23.2024102903";
 const VSCODE_VERSION = "1.95.0";
@@ -13,7 +12,6 @@ const API_VERSION = "2023-07-07";
 const INTEGRATION_ID = "vscode-chat";
 const ORGANIZATION = "github-copilot";
 const HOST = "api.githubcopilot.com";
-
 
 
 
@@ -264,6 +262,7 @@ const chatCompletions = async (req, res) => {
 
 
 };
+
 const embeddings = async (req, res) => {
     try {
         res.status(501).json({ error: "Not implemented" });

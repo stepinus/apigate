@@ -1,5 +1,4 @@
 import OpenAI from 'openai';
-import logData from '../log.js';
 if (!process.env.OPENROUTER_API_KEY) {
     throw new Error('OPENROUTER_API_KEY environment variable is not set');
 }
@@ -18,7 +17,6 @@ const chatCompletions = async (req, res) => {
             res.sse({ message: 'one world' });
             return;
         }
-
         const stream = await openrouter.chat.completions.create({...req.body});
         for await (const chunk of stream) {
             res.sse(chunk);
